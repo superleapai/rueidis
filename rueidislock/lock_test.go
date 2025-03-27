@@ -12,11 +12,13 @@ import (
 	"github.com/redis/rueidis"
 )
 
+const testDB = 10
+
 var address = []string{"127.0.0.1:6379"}
 
 func newLocker(t *testing.T, noLoop, setpx, nocsc bool) *locker {
 	impl, err := NewLocker(LockerOption{
-		ClientOption:   rueidis.ClientOption{InitAddress: address, DisableCache: nocsc},
+		ClientOption:   rueidis.ClientOption{InitAddress: address, DisableCache: nocsc, SelectDB: testDB},
 		NoLoopTracking: noLoop,
 		FallbackSETPX:  setpx,
 	})
@@ -27,7 +29,7 @@ func newLocker(t *testing.T, noLoop, setpx, nocsc bool) *locker {
 }
 
 func newClient(t *testing.T) rueidis.Client {
-	client, err := rueidis.NewClient(rueidis.ClientOption{InitAddress: address})
+	client, err := rueidis.NewClient(rueidis.ClientOption{InitAddress: address, SelectDB: testDB})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,11 +37,11 @@ func newClient(t *testing.T) rueidis.Client {
 }
 
 func TestNewLocker(t *testing.T) {
-	_, err := NewLocker(LockerOption{ClientOption: rueidis.ClientOption{InitAddress: nil}})
+	_, err := NewLocker(LockerOption{ClientOption: rueidis.ClientOption{InitAddress: nil, SelectDB: testDB}})
 	if err == nil {
 		t.Fatal(err)
 	}
-	l, err := NewLocker(LockerOption{ClientOption: rueidis.ClientOption{InitAddress: address}})
+	l, err := NewLocker(LockerOption{ClientOption: rueidis.ClientOption{InitAddress: address, SelectDB: testDB}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +61,7 @@ func TestNewLocker(t *testing.T) {
 func TestNewLocker_WithClientBuilder(t *testing.T) {
 	var client rueidis.Client
 	l, err := NewLocker(LockerOption{
-		ClientOption: rueidis.ClientOption{InitAddress: address},
+		ClientOption: rueidis.ClientOption{InitAddress: address, SelectDB: testDB},
 		ClientBuilder: func(option rueidis.ClientOption) (_ rueidis.Client, err error) {
 			client, err = rueidis.NewClient(option)
 			return client, err
@@ -346,6 +348,55 @@ func TestLocker_WithContext_ExtendByClientSideCaching(t *testing.T) {
 	})
 }
 
+func TestLocker_WithContext_AutoExtendConcurrent(t *testing.T) {
+	test := func(t *testing.T, noLoop, setpx, nocsc bool) {
+		locker := newLocker(t, noLoop, setpx, nocsc)
+		locker.validity = time.Second
+		locker.interval = time.Second / 2
+		defer locker.Close()
+
+		key := strconv.Itoa(rand.Int())
+
+		ctx1, cancel1, err1 := locker.WithContext(context.Background(), key)
+		if err1 != nil {
+			t.Fatal(err1)
+		}
+		go func() {
+			for i := 0; i < 4; i++ {
+				select {
+				case <-ctx1.Done():
+					t.Errorf("unexpected context canceled %v", ctx1.Err())
+				default:
+					time.Sleep(locker.validity)
+				}
+			}
+			cancel1()
+		}()
+		ctx2, cancel2, err2 := locker.WithContext(context.Background(), key)
+		if err2 != nil {
+			t.Fatal(err2)
+		}
+		if !errors.Is(ctx1.Err(), context.Canceled) {
+			t.Fatalf("unexpected context canceled %v", ctx1.Err())
+		}
+		if ctx2.Err() != nil {
+			t.Fatalf("unexpected context canceled %v", ctx2.Err())
+		}
+		cancel2()
+	}
+	for _, nocsc := range []bool{false, true} {
+		t.Run("Tracking Loop", func(t *testing.T) {
+			test(t, false, false, nocsc)
+		})
+		t.Run("Tracking NoLoop", func(t *testing.T) {
+			test(t, true, false, nocsc)
+		})
+		t.Run("SET PX", func(t *testing.T) {
+			test(t, true, true, nocsc)
+		})
+	}
+}
+
 func TestLocker_WithContext_AutoExtend(t *testing.T) {
 	test := func(t *testing.T, noLoop, setpx, nocsc bool) {
 		locker := newLocker(t, noLoop, setpx, nocsc)
@@ -432,6 +483,39 @@ func TestLocker_WithContext_CancelContext(t *testing.T) {
 		if !errors.Is(ctx.Err(), context.Canceled) {
 			t.Fatal(err)
 		}
+	}
+	for _, nocsc := range []bool{false, true} {
+		t.Run("Tracking Loop", func(t *testing.T) {
+			test(t, false, false, nocsc)
+		})
+		t.Run("Tracking NoLoop", func(t *testing.T) {
+			test(t, true, false, nocsc)
+		})
+		t.Run("SET PX", func(t *testing.T) {
+			test(t, true, true, nocsc)
+		})
+	}
+}
+
+func TestLocker_WithContext_ShorterTimeoutContext(t *testing.T) {
+	test := func(t *testing.T, noLoop, setpx, nocsc bool) {
+		locker := newLocker(t, noLoop, setpx, nocsc)
+		locker.validity = time.Second * 5
+		locker.interval = time.Second * 3
+		defer locker.Close()
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		ctx, cancel, err := locker.WithContext(ctx, strconv.Itoa(rand.Int()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(time.Second * 2)
+		if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			t.Fatalf("unexpected context canceled %v", ctx.Err())
+		}
+		cancel()
 	}
 	for _, nocsc := range []bool{false, true} {
 		t.Run("Tracking Loop", func(t *testing.T) {
@@ -740,7 +824,7 @@ func TestLocker_RetryErrLockerClosed(t *testing.T) {
 
 func TestLocker_Flush(t *testing.T) {
 	test := func(t *testing.T, noLoop, setpx, nocsc bool) {
-		client, err := rueidis.NewClient(rueidis.ClientOption{InitAddress: address})
+		client, err := rueidis.NewClient(rueidis.ClientOption{InitAddress: address, SelectDB: testDB})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -754,7 +838,7 @@ func TestLocker_Flush(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := client.Do(context.Background(), client.B().Flushall().Build()).Error(); err != nil {
+		if err := client.Do(context.Background(), client.B().Flushdb().Build()).Error(); err != nil {
 			t.Fatal(err)
 		}
 

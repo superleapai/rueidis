@@ -197,10 +197,12 @@ func TestPipeliner(t *testing.T) {
 		p.BitPos(ctx, "1", 0, 0, 1)
 		p.BitPosSpan(ctx, "1", 0, 1, 2, "1")
 		p.BitField(ctx, "1", "2", "3")
+		p.BitFieldRO(ctx, "1", "2", "3")
 		p.Scan(ctx, 0, "*", 1)
 		p.ScanType(ctx, 0, "*", 1, "1")
 		p.SScan(ctx, "1", 0, "*", 1)
 		p.HScan(ctx, "1", 0, "*", 1)
+		p.HScanNoValues(ctx, "1", 0, "*", 1)
 		p.ZScan(ctx, "1", 0, "*", 1)
 		p.HDel(ctx, "1", "2", "3")
 		p.HExists(ctx, "1", "2")
@@ -266,6 +268,7 @@ func TestPipeliner(t *testing.T) {
 		p.LRem(ctx, "1", 1, 2)
 		p.LSet(ctx, "1", 1, 2)
 		p.LTrim(ctx, "1", 1, 2)
+		p.LCS(ctx, &LCSQuery{Key1: "a", Key2: "b"})
 		p.RPop(ctx, "1")
 		p.RPopCount(ctx, "1", 1)
 		p.RPopLPush(ctx, "1", "2")
@@ -388,6 +391,7 @@ func TestPipeliner(t *testing.T) {
 		p.ClientID(ctx)
 		p.ClientUnblock(ctx, 1)
 		p.ClientUnblockWithError(ctx, 1)
+		p.ClientInfo(ctx)
 		p.ConfigGet(ctx, "1")
 		p.ConfigResetStat(ctx)
 		p.ConfigSet(ctx, "1", "v")
@@ -425,6 +429,7 @@ func TestPipeliner(t *testing.T) {
 		p.FunctionList(ctx, FunctionListQuery{LibraryNamePattern: "*", WithCode: true})
 		p.FunctionDump(ctx)
 		p.FunctionRestore(ctx, "1")
+		p.FunctionStats(ctx)
 		p.FCall(ctx, "1", []string{"1"}, "2", "3")
 		p.FCallRO(ctx, "1", []string{"1"}, "2", "3")
 		p.Publish(ctx, "1", "2")
@@ -466,6 +471,13 @@ func TestPipeliner(t *testing.T) {
 		p.GeoDist(ctx, "1", "2", "3", "M")
 		p.GeoHash(ctx, "1", "2", "3", "4")
 		p.ACLDryRun(ctx, "1", "2", "3")
+		p.ACLSetUser(ctx, "1", "2", "3")
+		p.ACLDelUser(ctx, "1")
+		p.ACLLog(ctx, 1)
+		p.ACLCat(ctx)
+		p.ACLList(ctx)
+		p.ACLLogReset(ctx)
+		p.ACLCatArgs(ctx, &ACLCatArgs{Category: "read"})
 		p.TFunctionLoad(ctx, "1")
 		p.TFunctionLoadArgs(ctx, "1", &TFunctionLoadOptions{Replace: true, Config: `{"last_update_field_name":"last_update"}`})
 		p.TFunctionDelete(ctx, "1")
@@ -597,8 +609,17 @@ func TestPipeliner(t *testing.T) {
 		p.JSONStrLen(ctx, "1", "1")
 		p.JSONToggle(ctx, "1", "1")
 		p.JSONType(ctx, "1", "1")
+		p.SlaveOf(ctx, "NO", "ONE")
+		p.SlowLogGet(ctx, 1)
+		p.SlowLogReset(ctx)
+		p.ClusterMyShardID(ctx)
+		p.ModuleLoadex(ctx, &ModuleLoadexConfig{
+			Path: "/",
+			Conf: map[string]any{"k": "v"},
+			Args: []any{"1", "2"},
+		})
 
-		if n := len(p.rets); n != 474 {
+		if n := len(p.rets); n != 491 {
 			t.Fatalf("unexpected pipeline calls: %v", n)
 		}
 		for i, cmd := range p.rets {
@@ -606,7 +627,7 @@ func TestPipeliner(t *testing.T) {
 				t.Fatalf("unexpected pipeline placeholder err(%d): %v", i, err)
 			}
 		}
-		if n := len(p.comp.client.(*proxy).cmds); n != 474 {
+		if n := len(p.comp.client.(*proxy).cmds); n != 491 {
 			t.Fatalf("unexpected pipeline commands: %v", n)
 		}
 		var pipeline [][]string
@@ -712,10 +733,12 @@ var golden = `[
     ["BITPOS","1","0","0","1"],
     ["BITPOS","1","0","1","2","BYTE"],
     ["BITFIELD","1","2","3"],
+    ["BITFIELD_RO","1","GET","2","3"],
     ["SCAN","0","MATCH","*","COUNT","1"],
     ["SCAN","0","MATCH","*","COUNT","1","TYPE","1"],
     ["SSCAN","1","0","MATCH","*","COUNT","1"],
     ["HSCAN","1","0","MATCH","*","COUNT","1"],
+    ["HSCAN","1","0","MATCH","*","COUNT","1","NOVALUES"],
     ["ZSCAN","1","0","MATCH","*","COUNT","1"],
     ["HDEL","1","2","3"],
     ["HEXISTS","1","2"],
@@ -781,6 +804,7 @@ var golden = `[
     ["LREM","1","1","2"],
     ["LSET","1","1","2"],
     ["LTRIM","1","1","2"],
+    ["LCS","a","b"],
     ["RPOP","1"],
     ["RPOP","1","1"],
     ["RPOPLPUSH","1","2"],
@@ -903,6 +927,7 @@ var golden = `[
     ["CLIENT","ID"],
     ["CLIENT","UNBLOCK","1"],
     ["CLIENT","UNBLOCK","1","ERROR"],
+    ["CLIENT","INFO"],
     ["CONFIG","GET","1"],
     ["CONFIG","RESETSTAT"],
     ["CONFIG","SET","1","v"],
@@ -940,6 +965,7 @@ var golden = `[
     ["FUNCTION","LIST","LIBRARYNAME","*","WITHCODE"],
     ["FUNCTION","DUMP"],
     ["FUNCTION","RESTORE","1"],
+    ["FUNCTION","STATS"],
     ["FCALL","1","1","1","2","3"],
     ["FCALL_RO","1","1","1","2","3"],
     ["PUBLISH","1","2"],
@@ -981,6 +1007,13 @@ var golden = `[
     ["GEODIST","1","2","3","m"],
     ["GEOHASH","1","2","3","4"],
     ["ACL","DRYRUN","1","2","3"],
+    ["ACL","SETUSER","1","2","3"],
+    ["ACL","DELUSER","1"],
+    ["ACL","LOG","1"],
+    ["ACL","CAT"],
+    ["ACL","LIST"],
+    ["ACL","LOG","RESET"],
+    ["ACL","CAT","read"],
     ["TFUNCTION","LOAD","1"],
     ["TFUNCTION","LOAD","REPLACE","CONFIG","{\"last_update_field_name\":\"last_update\"}","1"],
     ["TFUNCTION","DELETE","1"],
@@ -1111,5 +1144,10 @@ var golden = `[
     ["JSON.STRAPPEND","1","1","1"],
     ["JSON.STRLEN","1","1"],
     ["JSON.TOGGLE","1","1"],
-    ["JSON.TYPE","1","1"]
+    ["JSON.TYPE","1","1"],
+    ["SLAVEOF","NO","ONE"],
+    ["SLOWLOG","GET","1"],
+    ["SLOWLOG","RESET"],
+    ["CLUSTER","MYSHARDID"],
+    ["MODULE","LOADEX","/","CONFIG","k","v","ARGS","1","2"]
 ]`

@@ -51,13 +51,13 @@ func accept(t *testing.T, ln net.Listener) (*redisMock, error) {
 		conn: conn,
 	}
 	mock.Expect("HELLO", "3").
-		Reply(RedisMessage{
-			typ: '%',
-			values: []RedisMessage{
-				{typ: '+', string: "proto"},
-				{typ: ':', integer: 3},
+		Reply(slicemsg(
+			'%',
+			[]RedisMessage{
+				strmsg('+', "proto"),
+				{typ: ':', intlen: 3},
 			},
-		})
+		))
 	mock.Expect("CLIENT", "TRACKING", "ON", "OPTIN").
 		ReplyString("OK")
 	return mock, nil
@@ -118,7 +118,7 @@ func TestNewClusterClientError(t *testing.T) {
 				ReplyError("UNKNOWN COMMAND")
 			mock.Expect("CLIENT", "SETINFO", "LIB-VER", LibVer).
 				ReplyError("UNKNOWN COMMAND")
-			mock.Expect("CLUSTER", "SLOTS").Reply(RedisMessage{typ: '-', string: "other error"})
+			mock.Expect("CLUSTER", "SLOTS").Reply(strmsg('-', "other error"))
 			mock.Expect("PING").ReplyString("OK")
 			mock.Close()
 			close(done)
@@ -156,6 +156,53 @@ func TestNewClusterClientError(t *testing.T) {
 			t.Errorf("unexpected error %v", err)
 		}
 	})
+
+	t.Run("replica only and replica selector option conflict", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ln.Close()
+
+		_, port, _ := net.SplitHostPort(ln.Addr().String())
+		client, err := NewClient(ClientOption{
+			InitAddress: []string{"127.0.0.1:" + port},
+			ReplicaOnly: true,
+			ReplicaSelector: func(slot uint16, replicas []ReplicaInfo) int {
+				return 0
+			},
+		})
+		if client != nil || err == nil {
+			t.Errorf("unexpected return %v %v", client, err)
+		}
+
+		if !strings.Contains(err.Error(), ErrReplicaOnlyConflictWithReplicaSelector.Error()) {
+			t.Errorf("unexpected error %v", err)
+		}
+	})
+
+	t.Run("send to replicas should be set when replica selector is set", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ln.Close()
+
+		_, port, _ := net.SplitHostPort(ln.Addr().String())
+		client, err := NewClient(ClientOption{
+			InitAddress: []string{"127.0.0.1:" + port},
+			ReplicaSelector: func(slot uint16, replicas []ReplicaInfo) int {
+				return 0
+			},
+		})
+		if client != nil || err == nil {
+			t.Errorf("unexpected return %v %v", client, err)
+		}
+
+		if !strings.Contains(err.Error(), ErrSendToReplicasNotSet.Error()) {
+			t.Errorf("unexpected error %v", err)
+		}
+	})
 }
 
 func TestFallBackSingleClient(t *testing.T) {
@@ -175,7 +222,7 @@ func TestFallBackSingleClient(t *testing.T) {
 			ReplyError("UNKNOWN COMMAND")
 		mock.Expect("CLIENT", "SETINFO", "LIB-VER", LibVer).
 			ReplyError("UNKNOWN COMMAND")
-		mock.Expect("CLUSTER", "SLOTS").Reply(RedisMessage{typ: '-', string: "ERR This instance has cluster support disabled"})
+		mock.Expect("CLUSTER", "SLOTS").Reply(strmsg('-', "ERR This instance has cluster support disabled"))
 		mock.Expect("PING").ReplyString("OK")
 		mock.Close()
 		close(done)
@@ -294,7 +341,7 @@ func TestTLSClient(t *testing.T) {
 			ReplyError("UNKNOWN COMMAND")
 		mock.Expect("CLIENT", "SETINFO", "LIB-VER", LibVer).
 			ReplyError("UNKNOWN COMMAND")
-		mock.Expect("CLUSTER", "SLOTS").Reply(RedisMessage{typ: '-', string: "ERR This instance has cluster support disabled"})
+		mock.Expect("CLUSTER", "SLOTS").Reply(strmsg('-', "ERR This instance has cluster support disabled"))
 		mock.Expect("PING").ReplyString("OK")
 		mock.Close()
 		close(done)
@@ -302,8 +349,9 @@ func TestTLSClient(t *testing.T) {
 
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 	client, err := NewClient(ClientOption{
-		InitAddress: []string{"127.0.0.1:" + port},
-		TLSConfig:   config,
+		InitAddress:       []string{"127.0.0.1:" + port},
+		TLSConfig:         config,
+		DisableTCPNoDelay: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -344,6 +392,27 @@ func TestCustomDialFnIsCalled(t *testing.T) {
 	option := ClientOption{
 		InitAddress: []string{"127.0.0.1:0"},
 		DialFn: func(s string, dialer *net.Dialer, config *tls.Config) (conn net.Conn, err error) {
+			isFnCalled = true
+			return nil, errors.New("dial error")
+		},
+	}
+
+	_, err := NewClient(option)
+
+	if !isFnCalled {
+		t.Fatalf("excepted ClientOption.DialFn to be called")
+	}
+	if err == nil {
+		t.Fatalf("expected dial error")
+	}
+}
+
+func TestCustomDialCtxFnIsCalled(t *testing.T) {
+	defer ShouldNotLeaked(SetupLeakDetection())
+	isFnCalled := false
+	option := ClientOption{
+		InitAddress: []string{"127.0.0.1:0"},
+		DialCtxFn: func(ctx context.Context, s string, dialer *net.Dialer, config *tls.Config) (conn net.Conn, err error) {
 			isFnCalled = true
 			return nil, errors.New("dial error")
 		},
