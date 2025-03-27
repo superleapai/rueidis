@@ -138,13 +138,13 @@ type CoreCmdable interface {
 	BitPos(ctx context.Context, key string, bit int64, pos ...int64) *IntCmd
 	BitPosSpan(ctx context.Context, key string, bit int64, start, end int64, span string) *IntCmd
 	BitField(ctx context.Context, key string, args ...any) *IntSliceCmd
-	// TODO BitFieldRO(ctx context.Context, key string, values ...interface{}) *IntSliceCmd
+	BitFieldRO(ctx context.Context, key string, values ...any) *IntSliceCmd
 
 	Scan(ctx context.Context, cursor uint64, match string, count int64) *ScanCmd
 	ScanType(ctx context.Context, cursor uint64, match string, count int64, keyType string) *ScanCmd
 	SScan(ctx context.Context, key string, cursor uint64, match string, count int64) *ScanCmd
 	HScan(ctx context.Context, key string, cursor uint64, match string, count int64) *ScanCmd
-	// TODO HScanNoValues(ctx context.Context, key string, cursor uint64, match string, count int64) *ScanCmd
+	HScanNoValues(ctx context.Context, key string, cursor uint64, match string, count int64) *ScanCmd
 	ZScan(ctx context.Context, key string, cursor uint64, match string, count int64) *ScanCmd
 
 	HDel(ctx context.Context, key string, fields ...string) *IntCmd
@@ -180,7 +180,7 @@ type CoreCmdable interface {
 	BLMPop(ctx context.Context, timeout time.Duration, direction string, count int64, keys ...string) *KeyValuesCmd
 	BRPop(ctx context.Context, timeout time.Duration, keys ...string) *StringSliceCmd
 	BRPopLPush(ctx context.Context, source, destination string, timeout time.Duration) *StringCmd
-	// TODO LCS(ctx context.Context, q *LCSQuery) *LCSCmd
+	LCS(ctx context.Context, q *LCSQuery) *LCSCmd
 	LIndex(ctx context.Context, key string, index int64) *StringCmd
 	LInsert(ctx context.Context, key, op string, pivot, value any) *IntCmd
 	LInsertBefore(ctx context.Context, key string, pivot, value any) *IntCmd
@@ -320,7 +320,7 @@ type CoreCmdable interface {
 	ClientKill(ctx context.Context, ipPort string) *StatusCmd
 	ClientKillByFilter(ctx context.Context, keys ...string) *IntCmd
 	ClientList(ctx context.Context) *StringCmd
-	// TODO ClientInfo(ctx context.Context) *ClientInfoCmd
+	ClientInfo(ctx context.Context) *ClientInfoCmd
 	ClientPause(ctx context.Context, dur time.Duration) *BoolCmd
 	ClientUnpause(ctx context.Context) *BoolCmd
 	ClientID(ctx context.Context) *IntCmd
@@ -341,8 +341,9 @@ type CoreCmdable interface {
 	Shutdown(ctx context.Context) *StatusCmd
 	ShutdownSave(ctx context.Context) *StatusCmd
 	ShutdownNoSave(ctx context.Context) *StatusCmd
-	// TODO SlaveOf(ctx context.Context, host, port string) *StatusCmd
-	// TODO SlowLogGet(ctx context.Context, num int64) *SlowLogCmd
+	SlaveOf(ctx context.Context, host, port string) *StatusCmd
+	SlowLogGet(ctx context.Context, num int64) *SlowLogCmd
+	SlowLogReset(ctx context.Context) *StatusCmd
 	Time(ctx context.Context) *TimeCmd
 	DebugObject(ctx context.Context, key string) *StringCmd
 	ReadOnly(ctx context.Context) *StatusCmd
@@ -367,7 +368,7 @@ type CoreCmdable interface {
 	FunctionList(ctx context.Context, q FunctionListQuery) *FunctionListCmd
 	FunctionDump(ctx context.Context) *StringCmd
 	FunctionRestore(ctx context.Context, libDump string) *StringCmd
-	// TODO FunctionStats(ctx context.Context) *FunctionStatsCmd
+	FunctionStats(ctx context.Context) *FunctionStatsCmd
 	FCall(ctx context.Context, function string, keys []string, args ...any) *Cmd
 	FCallRO(ctx context.Context, function string, keys []string, args ...any) *Cmd
 
@@ -379,10 +380,10 @@ type CoreCmdable interface {
 	PubSubShardChannels(ctx context.Context, pattern string) *StringSliceCmd
 	PubSubShardNumSub(ctx context.Context, channels ...string) *StringIntMapCmd
 
-	// TODO ClusterMyShardID(ctx context.Context) *StringCmd
+	ClusterMyShardID(ctx context.Context) *StringCmd
 	ClusterSlots(ctx context.Context) *ClusterSlotsCmd
 	ClusterShards(ctx context.Context) *ClusterShardsCmd
-	// TODO ClusterLinks(ctx context.Context) *ClusterLinksCmd
+	ClusterLinks(ctx context.Context) *ClusterLinksCmd
 	ClusterNodes(ctx context.Context) *StringCmd
 	ClusterMeet(ctx context.Context, host string, port int64) *StatusCmd
 	ClusterForget(ctx context.Context, nodeID string) *StatusCmd
@@ -401,8 +402,6 @@ type CoreCmdable interface {
 	ClusterFailover(ctx context.Context) *StatusCmd
 	ClusterAddSlots(ctx context.Context, slots ...int64) *StatusCmd
 	ClusterAddSlotsRange(ctx context.Context, min, max int64) *StatusCmd
-	// TODO ReadOnly(ctx context.Context) *StatusCmd
-	// TODO ReadWrite(ctx context.Context) *StatusCmd
 
 	GeoAdd(ctx context.Context, key string, geoLocation ...GeoLocation) *IntCmd
 	GeoPos(ctx context.Context, key string, members ...string) *GeoPosCmd
@@ -417,48 +416,52 @@ type CoreCmdable interface {
 	GeoHash(ctx context.Context, key string, members ...string) *StringSliceCmd
 
 	ACLDryRun(ctx context.Context, username string, command ...any) *StringCmd
-	// TODO ACLLog(ctx context.Context, count int64) *ACLLogCmd
-	// TODO ACLLogReset(ctx context.Context) *StatusCmd
+	ACLLog(ctx context.Context, count int64) *ACLLogCmd
+	ACLSetUser(ctx context.Context, username string, rules ...string) *StatusCmd
+	ACLDelUser(ctx context.Context, username string) *IntCmd
+	ACLLogReset(ctx context.Context) *StatusCmd
+	ACLList(ctx context.Context) *StringSliceCmd
+	ACLCat(ctx context.Context) *StringSliceCmd
+	ACLCatArgs(ctx context.Context, options *ACLCatArgs) *StringSliceCmd
 
-	// TODO ModuleLoadex(ctx context.Context, conf *ModuleLoadexConfig) *StringCmd
+	ModuleLoadex(ctx context.Context, conf *ModuleLoadexConfig) *StringCmd
 	GearsCmdable
 	ProbabilisticCmdable
 	TimeseriesCmdable
 	JSONCmdable
-	// TODO SearchCmdable
+	SearchCmdable
 }
 
-// TODO SearchCmdable
-//type SearchCmdable interface {
-//	FT_List(ctx context.Context) *StringSliceCmd
-//	FTAggregate(ctx context.Context, index string, query string) *MapStringInterfaceCmd
-//	FTAggregateWithArgs(ctx context.Context, index string, query string, options *FTAggregateOptions) *AggregateCmd
-//	FTAliasAdd(ctx context.Context, index string, alias string) *StatusCmd
-//	FTAliasDel(ctx context.Context, alias string) *StatusCmd
-//	FTAliasUpdate(ctx context.Context, index string, alias string) *StatusCmd
-//	FTAlter(ctx context.Context, index string, skipInitalScan bool, definition []interface{}) *StatusCmd
-//	FTConfigGet(ctx context.Context, option string) *MapMapStringInterfaceCmd
-//	FTConfigSet(ctx context.Context, option string, value interface{}) *StatusCmd
-//	FTCreate(ctx context.Context, index string, options *FTCreateOptions, schema ...*FieldSchema) *StatusCmd
-//	FTCursorDel(ctx context.Context, index string, cursorId int) *StatusCmd
-//	FTCursorRead(ctx context.Context, index string, cursorId int, count int) *MapStringInterfaceCmd
-//	FTDictAdd(ctx context.Context, dict string, term ...interface{}) *IntCmd
-//	FTDictDel(ctx context.Context, dict string, term ...interface{}) *IntCmd
-//	FTDictDump(ctx context.Context, dict string) *StringSliceCmd
-//	FTDropIndex(ctx context.Context, index string) *StatusCmd
-//	FTDropIndexWithArgs(ctx context.Context, index string, options *FTDropIndexOptions) *StatusCmd
-//	FTExplain(ctx context.Context, index string, query string) *StringCmd
-//	FTExplainWithArgs(ctx context.Context, index string, query string, options *FTExplainOptions) *StringCmd
-//	FTInfo(ctx context.Context, index string) *FTInfoCmd
-//	FTSpellCheck(ctx context.Context, index string, query string) *FTSpellCheckCmd
-//	FTSpellCheckWithArgs(ctx context.Context, index string, query string, options *FTSpellCheckOptions) *FTSpellCheckCmd
-//	FTSearch(ctx context.Context, index string, query string) *FTSearchCmd
-//	FTSearchWithArgs(ctx context.Context, index string, query string, options *FTSearchOptions) *FTSearchCmd
-//	FTSynDump(ctx context.Context, index string) *FTSynDumpCmd
-//	FTSynUpdate(ctx context.Context, index string, synGroupId interface{}, terms []interface{}) *StatusCmd
-//	FTSynUpdateWithArgs(ctx context.Context, index string, synGroupId interface{}, options *FTSynUpdateOptions, terms []interface{}) *StatusCmd
-//	FTTagVals(ctx context.Context, index string, field string) *StringSliceCmd
-//}
+type SearchCmdable interface {
+	FT_List(ctx context.Context) *StringSliceCmd
+	FTAggregate(ctx context.Context, index string, query string) *MapStringInterfaceCmd
+	FTAggregateWithArgs(ctx context.Context, index string, query string, options *FTAggregateOptions) *AggregateCmd
+	FTAliasAdd(ctx context.Context, index string, alias string) *StatusCmd
+	FTAliasDel(ctx context.Context, alias string) *StatusCmd
+	FTAliasUpdate(ctx context.Context, index string, alias string) *StatusCmd
+	FTAlter(ctx context.Context, index string, skipInitalScan bool, definition []interface{}) *StatusCmd
+	FTConfigGet(ctx context.Context, option string) *MapMapStringInterfaceCmd
+	FTConfigSet(ctx context.Context, option string, value interface{}) *StatusCmd
+	FTCreate(ctx context.Context, index string, options *FTCreateOptions, schema ...*FieldSchema) *StatusCmd
+	FTCursorDel(ctx context.Context, index string, cursorId int) *StatusCmd
+	FTCursorRead(ctx context.Context, index string, cursorId int, count int) *MapStringInterfaceCmd
+	FTDictAdd(ctx context.Context, dict string, term ...interface{}) *IntCmd
+	FTDictDel(ctx context.Context, dict string, term ...interface{}) *IntCmd
+	FTDictDump(ctx context.Context, dict string) *StringSliceCmd
+	FTDropIndex(ctx context.Context, index string) *StatusCmd
+	FTDropIndexWithArgs(ctx context.Context, index string, options *FTDropIndexOptions) *StatusCmd
+	FTExplain(ctx context.Context, index string, query string) *StringCmd
+	FTExplainWithArgs(ctx context.Context, index string, query string, options *FTExplainOptions) *StringCmd
+	FTInfo(ctx context.Context, index string) *FTInfoCmd
+	FTSpellCheck(ctx context.Context, index string, query string) *FTSpellCheckCmd
+	FTSpellCheckWithArgs(ctx context.Context, index string, query string, options *FTSpellCheckOptions) *FTSpellCheckCmd
+	FTSearch(ctx context.Context, index string, query string) *FTSearchCmd
+	FTSearchWithArgs(ctx context.Context, index string, query string, options *FTSearchOptions) *FTSearchCmd
+	FTSynDump(ctx context.Context, index string) *FTSynDumpCmd
+	FTSynUpdate(ctx context.Context, index string, synGroupId interface{}, terms []interface{}) *StatusCmd
+	FTSynUpdateWithArgs(ctx context.Context, index string, synGroupId interface{}, options *FTSynUpdateOptions, terms []interface{}) *StatusCmd
+	FTTagVals(ctx context.Context, index string, field string) *StringSliceCmd
+}
 
 // https://github.com/redis/go-redis/blob/af4872cbd0de349855ce3f0978929c2f56eb995f/probabilistic.go#L10
 type ProbabilisticCmdable interface {
@@ -1246,6 +1249,15 @@ func (c *Compat) BitField(ctx context.Context, key string, args ...any) *IntSlic
 	return newIntSliceCmd(resp)
 }
 
+func (c *Compat) BitFieldRO(ctx context.Context, key string, args ...any) *IntSliceCmd {
+	cmd := c.client.B().Arbitrary("BITFIELD_RO").Keys(key)
+	for i := 0; i < len(args); i += 2 {
+		cmd = cmd.Args("GET", str(args[i]), str(args[i+1]))
+	}
+	resp := c.client.Do(ctx, cmd.ReadOnly())
+	return newIntSliceCmd(resp)
+}
+
 func (c *Compat) Scan(ctx context.Context, cursor uint64, match string, count int64) *ScanCmd {
 	cmd := c.client.B().Arbitrary("SCAN", strconv.FormatInt(int64(cursor), 10))
 	if match != "" {
@@ -1290,6 +1302,19 @@ func (c *Compat) HScan(ctx context.Context, key string, cursor uint64, match str
 	if count > 0 {
 		cmd = cmd.Args("COUNT", strconv.FormatInt(count, 10))
 	}
+	resp := c.client.Do(ctx, cmd.ReadOnly())
+	return newScanCmd(resp)
+}
+
+func (c *Compat) HScanNoValues(ctx context.Context, key string, cursor uint64, match string, count int64) *ScanCmd {
+	cmd := c.client.B().Arbitrary("HSCAN").Keys(key).Args(strconv.FormatInt(int64(cursor), 10))
+	if match != "" {
+		cmd = cmd.Args("MATCH", match)
+	}
+	if count > 0 {
+		cmd = cmd.Args("COUNT", strconv.FormatInt(count, 10))
+	}
+	cmd = cmd.Args("NOVALUES")
 	resp := c.client.Do(ctx, cmd.ReadOnly())
 	return newScanCmd(resp)
 }
@@ -1555,6 +1580,34 @@ func (c *Compat) BRPopLPush(ctx context.Context, source, destination string, tim
 	cmd := c.client.B().Brpoplpush().Source(source).Destination(destination).Timeout(float64(formatSec(timeout))).Build()
 	resp := c.client.Do(ctx, cmd)
 	return newStringCmd(resp)
+}
+
+func (c *Compat) LCS(ctx context.Context, q *LCSQuery) *LCSCmd {
+	var cmd cmds.Completed
+	var readType uint8
+
+	_cmd := cmds.Incomplete(c.client.B().Lcs().Key1(q.Key1).Key2(q.Key2))
+
+	if q.Len {
+		readType = uint8(2)
+		cmd = cmds.LcsKey2(_cmd).Len().Build()
+	} else if q.Idx {
+		readType = uint8(3)
+		if q.MinMatchLen > 0 && q.WithMatchLen {
+			cmd = cmds.LcsKey2(_cmd).Idx().Minmatchlen(int64(q.MinMatchLen)).Withmatchlen().Build()
+		} else if q.MinMatchLen > 0 {
+			cmd = cmds.LcsKey2(_cmd).Idx().Minmatchlen(int64(q.MinMatchLen)).Build()
+		} else if q.WithMatchLen {
+			cmd = cmds.LcsKey2(_cmd).Idx().Withmatchlen().Build()
+		} else {
+			cmd = cmds.LcsKey2(_cmd).Idx().Build()
+		}
+	} else {
+		readType = uint8(1)
+		cmd = cmds.LcsKey2(_cmd).Build()
+	}
+
+	return newLCSCmd(c.client.Do(ctx, cmd), readType)
 }
 
 func (c *Compat) LIndex(ctx context.Context, key string, index int64) *StringCmd {
@@ -2618,6 +2671,10 @@ func (c *Compat) ClientUnblockWithError(ctx context.Context, id int64) *IntCmd {
 	return newIntCmd(c.client.Do(ctx, c.client.B().ClientUnblock().ClientId(id).Error().Build()))
 }
 
+func (c *Compat) ClientInfo(ctx context.Context) *ClientInfoCmd {
+	return newClientInfoCmd(c.client.Do(ctx, c.client.B().ClientInfo().Build()))
+}
+
 func (c *Compat) ConfigGet(ctx context.Context, parameter string) *StringStringMapCmd {
 	cmd := c.client.B().ConfigGet().Parameter(parameter).Build()
 	resp := c.client.Do(ctx, cmd)
@@ -2706,6 +2763,24 @@ func (c *Compat) ShutdownNoSave(ctx context.Context) *StatusCmd {
 	return c.doStringCmdPrimaries(ctx, func(c rueidis.Client) rueidis.Completed {
 		return c.B().Shutdown().Nosave().Build()
 	})
+}
+
+func (c *Compat) SlaveOf(ctx context.Context, host, port string) *StatusCmd {
+	cmd := c.client.B().Arbitrary("SLAVEOF").Args(host, port).Build()
+	resp := c.client.Do(ctx, cmd)
+	return newStatusCmd(resp)
+}
+
+func (c *Compat) SlowLogGet(ctx context.Context, num int64) *SlowLogCmd {
+	cmd := c.client.B().SlowlogGet().Count(num).Build()
+	resp := c.client.Do(ctx, cmd)
+	return newSlowLogCmd(resp)
+}
+
+func (c *Compat) SlowLogReset(ctx context.Context) *StatusCmd {
+	cmd := c.client.B().SlowlogReset().Build()
+	resp := c.client.Do(ctx, cmd)
+	return newStatusCmd(resp)
 }
 
 func (c *Compat) Time(ctx context.Context) *TimeCmd {
@@ -2831,9 +2906,7 @@ func (c *Compat) FunctionFlush(ctx context.Context) *StringCmd {
 }
 
 func (c *Compat) FunctionKill(ctx context.Context) *StringCmd {
-	return c.doStringCmdPrimaries(ctx, func(c rueidis.Client) rueidis.Completed {
-		return c.B().FunctionKill().Build()
-	})
+	return newStringCmd(c.client.Do(ctx, c.client.B().FunctionKill().Build()))
 }
 
 func (c *Compat) FunctionFlushAsync(ctx context.Context) *StringCmd {
@@ -2915,6 +2988,12 @@ func (c *Compat) PubSubShardNumSub(ctx context.Context, channels ...string) *Str
 	return newStringIntMapCmd(resp)
 }
 
+func (c *Compat) ClusterMyShardID(ctx context.Context) *StringCmd {
+	cmd := c.client.B().ClusterMyshardid().Build()
+	resp := c.client.Do(ctx, cmd)
+	return newStringCmd(resp)
+}
+
 func (c *Compat) ClusterSlots(ctx context.Context) *ClusterSlotsCmd {
 	cmd := c.client.B().ClusterSlots().Build()
 	resp := c.client.Do(ctx, cmd)
@@ -2931,6 +3010,12 @@ func (c *Compat) ClusterNodes(ctx context.Context) *StringCmd {
 	cmd := c.client.B().ClusterNodes().Build()
 	resp := c.client.Do(ctx, cmd)
 	return newStringCmd(resp)
+}
+
+func (c *Compat) ClusterLinks(ctx context.Context) *ClusterLinksCmd {
+	cmd := c.client.B().ClusterLinks().Build()
+	resp := c.client.Do(ctx, cmd)
+	return newClusterLinksCmd(resp)
 }
 
 func (c *Compat) ClusterMeet(ctx context.Context, host string, port int64) *StatusCmd {
@@ -3161,10 +3246,66 @@ func (c *Compat) GeoHash(ctx context.Context, key string, members ...string) *St
 	return newStringSliceCmd(resp)
 }
 
+func (c *Compat) FunctionStats(ctx context.Context) *FunctionStatsCmd {
+	cmd := c.client.B().FunctionStats().Build()
+	resp := c.client.Do(ctx, cmd)
+	return newFunctionStatsCmd(resp)
+}
+
 func (c *Compat) ACLDryRun(ctx context.Context, username string, command ...any) *StringCmd {
 	cmd := c.client.B().AclDryrun().Username(username).Command(command[0].(string)).Arg(argsToSlice(command[1:])...).Build()
 	resp := c.client.Do(ctx, cmd)
 	return newStringCmd(resp)
+}
+
+type ACLCatArgs struct {
+	Category string
+}
+
+func (c *Compat) ACLCatArgs(ctx context.Context, options *ACLCatArgs) *StringSliceCmd {
+	// if there is a category passed, build new cmd, if there isn't - use the ACLCat method
+	if options != nil && options.Category != "" {
+		cmd := c.client.B().AclCat().Categoryname(options.Category).Build()
+		resp := c.client.Do(ctx, cmd)
+		return newStringSliceCmd(resp)
+	}
+	return c.ACLCat(ctx)
+}
+
+func (c *Compat) ACLLog(ctx context.Context, count int64) *ACLLogCmd {
+	cmd := c.client.B().AclLog().Count(count).Build()
+	resp := c.client.Do(ctx, cmd)
+	return newACLLogCmd(resp)
+}
+
+func (c *Compat) ACLSetUser(ctx context.Context, username string, rules ...string) *StatusCmd {
+	cmd := c.client.B().AclSetuser().Username(username).Rule(rules...).Build()
+	resp := c.client.Do(ctx, cmd)
+	return newStatusCmd(resp)
+}
+
+func (c *Compat) ACLLogReset(ctx context.Context) *StatusCmd {
+	cmd := c.client.B().AclLog().Reset().Build()
+	resp := c.client.Do(ctx, cmd)
+	return newStatusCmd(resp)
+}
+
+func (c *Compat) ACLCat(ctx context.Context) *StringSliceCmd {
+	cmd := c.client.B().AclCat().Build()
+	resp := c.client.Do(ctx, cmd)
+	return newStringSliceCmd(resp)
+}
+
+func (c *Compat) ACLList(ctx context.Context) *StringSliceCmd {
+	cmd := c.client.B().AclList().Build()
+	resp := c.client.Do(ctx, cmd)
+	return newStringSliceCmd(resp)
+}
+
+func (c *Compat) ACLDelUser(ctx context.Context, username string) *IntCmd {
+	cmd := c.client.B().AclDeluser().Username(username).Build()
+	resp := c.client.Do(ctx, cmd)
+	return newIntCmd(resp)
 }
 
 func (c *Compat) doPrimaries(ctx context.Context, fn func(c rueidis.Client) error) error {
@@ -4835,6 +4976,800 @@ func (c *Compat) Watch(ctx context.Context, fn func(Tx) error, keys ...string) e
 	return fn(newTx(dc, cancel))
 }
 
+func (c *Compat) FT_List(ctx context.Context) *StringSliceCmd {
+	cmd := c.client.B().FtList().Build()
+	return newStringSliceCmd(c.client.Do(ctx, cmd))
+}
+
+// FTAggregate - Performs a search query on an index and applies a series of aggregate transformations to the result.
+// The 'index' parameter specifies the index to search, and the 'query' parameter specifies the search query.
+// For more information, please refer to the Redis documentation:
+// [FT.AGGREGATE]: (https://redis.io/commands/ft.aggregate/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L473
+func (c *Compat) FTAggregate(ctx context.Context, index string, query string) *MapStringInterfaceCmd {
+	cmd := c.client.B().FtAggregate().Index(index).Query(query).Build()
+	return newMapStringInterfaceCmd(c.client.Do(ctx, cmd))
+}
+
+// FTAggregateWithArgs - Performs a search query on an index and applies a series of aggregate transformations to the result.
+// The 'index' parameter specifies the index to search, and the 'query' parameter specifies the search query.
+// This function also allows for specifying additional options such as: Verbatim, LoadAll, Load, Timeout, GroupBy, SortBy, SortByMax, Apply, LimitOffset, Limit, Filter, WithCursor, Params, and DialectVersion.
+// For more information, please refer to the Redis documentation:
+// [FT.AGGREGATE]: (https://redis.io/commands/ft.aggregate/)
+// see: go-redis v9.7.0: https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L671
+func (c *Compat) FTAggregateWithArgs(ctx context.Context, index string, query string, options *FTAggregateOptions) *AggregateCmd {
+	_cmd := cmds.Incomplete(c.client.B().FtAggregate().Index(index).Query(query))
+	if options != nil {
+		// [VERBATIM]
+		if options.Verbatim {
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Verbatim())
+		}
+		// [LOAD count field [field ...]]
+		if options.LoadAll {
+			// LOAD *
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).LoadAll())
+		} else {
+			// LOAD
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Load(int64(len(options.Load))))
+			fields := make([]string, 0, len(options.Load))
+			for _, l := range options.Load {
+				fields = append(fields, l.Field)
+			}
+			_cmd = cmds.Incomplete(cmds.FtAggregateOpLoadLoad(_cmd).Field(fields...))
+		}
+		// [TIMEOUT timeout]
+		if options.Timeout > 0 {
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Timeout(int64(options.Timeout)))
+		}
+		// [ GROUPBY nargs property [property ...] [ REDUCE function nargs arg [arg ...] [AS name] [ REDUCE function nargs arg [arg ...] [AS name] ...]] ...]]
+		if options.GroupBy != nil {
+			for _, groupBy := range options.GroupBy {
+				_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).
+					Groupby(int64(len(options.GroupBy))).
+					Property(argsToSlice(groupBy.Fields)...))
+				for _, reduce := range groupBy.Reduce {
+					_cmd = cmds.Incomplete(cmds.FtAggregateOpGroupbyProperty(_cmd).
+						Reduce(reduce.Reducer.String()).
+						Nargs(int64(len(reduce.Args))).
+						Arg(argsToSlice(reduce.Args)...))
+					if reduce.As != "" {
+						_cmd = cmds.Incomplete(cmds.FtAggregateOpGroupbyReduceArg(_cmd).As(reduce.As))
+					}
+				}
+			}
+		}
+		// [ SORTBY nargs [ property ASC | DESC [ property ASC | DESC ...]] [MAX num] [WITHCOUNT]
+		if options.SortBy != nil {
+			var numOfArgs int64 = 0
+			// count number of args to be passed in to cmds.FtAggregateQuery(_cmd).Sortby()
+			for _, sortBy := range options.SortBy {
+				numOfArgs++
+				if sortBy.Asc && sortBy.Desc {
+					panic("FT.AGGREGATE: ASC and DESC are mutually exclusive")
+				}
+				if sortBy.Asc || sortBy.Desc {
+					numOfArgs++
+				}
+			}
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Sortby(numOfArgs))
+			for _, sortBy := range options.SortBy {
+				_cmd = cmds.Incomplete(cmds.FtAggregateOpSortbySortby(_cmd).Property(sortBy.FieldName))
+				if sortBy.Asc && sortBy.Desc {
+					panic("FT.AGGREGATE: ASC and DESC are mutually exclusive")
+				}
+				if sortBy.Asc {
+					// ASC
+					_cmd = cmds.Incomplete(cmds.FtAggregateOpSortbyFieldsProperty(_cmd).Asc())
+				}
+				if sortBy.Desc {
+					// DESC
+					_cmd = cmds.Incomplete(cmds.FtAggregateOpSortbyFieldsProperty(_cmd).Desc())
+				}
+			}
+		}
+		if options.SortByMax > 0 {
+			_cmd = cmds.Incomplete(cmds.FtAggregateOpSortbySortby(_cmd).Max(int64(options.SortByMax)))
+		}
+		// FIXME: go-redis doesn't provide WITHCOUNT option
+
+		// [ APPLY expression AS name [ APPLY expression AS name ...]]
+		if options.Apply != nil {
+			for _, apply := range options.Apply {
+				_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Apply(apply.Field).As(apply.As))
+			}
+		}
+		// [ LIMIT offset num]
+		if options.LimitOffset >= 0 && options.Limit > 0 {
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Limit().OffsetNum(int64(options.LimitOffset), int64(options.Limit)))
+		}
+		// [FILTER filter]
+		if options.Filter != "" {
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Filter(options.Filter))
+		}
+		// [ WITHCURSOR [COUNT read_size] [MAXIDLE idle_time]]
+		if options.WithCursor {
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Withcursor())
+			if options.WithCursorOptions != nil {
+				if options.WithCursorOptions.Count > 0 {
+					_cmd = cmds.Incomplete(cmds.FtAggregateCursorWithcursor(_cmd).Count(int64(options.WithCursorOptions.Count)))
+				}
+				if options.WithCursorOptions.MaxIdle > 0 {
+					_cmd = cmds.Incomplete(cmds.FtAggregateCursorWithcursor(_cmd).Maxidle(int64(options.WithCursorOptions.MaxIdle)))
+				}
+			}
+		}
+		// [ PARAMS nargs name value [ name value ...]]
+		if options.Params != nil {
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Params().Nargs(int64(len(options.Params) * 2)).NameValue())
+			for name, val := range options.Params {
+				_cmd = cmds.Incomplete(cmds.FtAggregateParamsNameValue(_cmd).NameValue(name, str(val)))
+			}
+		}
+		// [ADDSCORES]: NOTE: go-redis doesn't implement this option.
+		// [DIALECT dialect]
+		if options.DialectVersion > 0 {
+			_cmd = cmds.Incomplete(cmds.FtAggregateQuery(_cmd).Dialect(int64(options.DialectVersion)))
+		}
+	}
+	cmd := cmds.FtAggregateQuery(_cmd).Build()
+	return newAggregateCmd(c.client.Do(ctx, cmd))
+}
+
+// FTAliasAdd - Adds an alias to an index.
+// The 'index' parameter specifies the index to which the alias is added, and the 'alias' parameter specifies the alias.
+// For more information, please refer to the Redis documentation:
+// [FT.ALIASADD]: (https://redis.io/commands/ft.aliasadd/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L782
+func (c *Compat) FTAliasAdd(ctx context.Context, index string, alias string) *StatusCmd {
+	cmd := c.client.B().FtAliasadd().Alias(alias).Index(index).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTAliasDel - Removes an alias from an index.
+// The 'alias' parameter specifies the alias to be removed.
+// For more information, please refer to the Redis documentation:
+// [FT.ALIASDEL]: (https://redis.io/commands/ft.aliasdel/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L793
+func (c *Compat) FTAliasDel(ctx context.Context, alias string) *StatusCmd {
+	cmd := c.client.B().FtAliasdel().Alias(alias).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTAliasUpdate - Updates an alias to an index.
+// The 'index' parameter specifies the index to which the alias is updated, and the 'alias' parameter specifies the alias.
+// If the alias already exists for a different index, it updates the alias to point to the specified index instead.
+// For more information, please refer to the Redis documentation:
+// [FT.ALIASUPDATE]: (https://redis.io/commands/ft.aliasupdate/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L804
+func (c *Compat) FTAliasUpdate(ctx context.Context, index string, alias string) *StatusCmd {
+	cmd := c.client.B().FtAliasupdate().Alias(alias).Index(index).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTAlter - Alters the definition of an existing index.
+// The 'index' parameter specifies the index to alter, and the 'skipInitialScan' parameter specifies whether to skip the initial scan.
+// The 'definition' parameter specifies the new definition for the index.
+// For more information, please refer to the Redis documentation:
+// [FT.ALTER]: (https://redis.io/commands/ft.alter/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L815
+func (c *Compat) FTAlter(ctx context.Context, index string, skipInitalScan bool, definition []interface{}) *StatusCmd {
+	_cmd := cmds.Incomplete(c.client.B().FtAlter().Index(index))
+	if skipInitalScan {
+		_cmd = cmds.Incomplete(cmds.FtAlterIndex(_cmd).Skipinitialscan())
+	}
+	if len(definition) != 2 {
+		panic("definition should contain attribute and options")
+	}
+	cmd := cmds.FtAlterIndex(_cmd).Schema().Add().Field(str(definition[0])).Options(str(definition[1])).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTConfigGet - Retrieves the value of a RediSearch configuration parameter.
+// The 'option' parameter specifies the configuration parameter to retrieve.
+// For more information, please refer to the Redis documentation:
+// [FT.CONFIG GET]: (https://redis.io/commands/ft.config-get/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L831
+func (c *Compat) FTConfigGet(ctx context.Context, option string) *MapMapStringInterfaceCmd {
+	cmd := c.client.B().FtConfigGet().Option(option).Build()
+	return newMapMapStringInterfaceCmd(c.client.Do(ctx, cmd))
+}
+
+// FTConfigSet - Sets the value of a RediSearch configuration parameter.
+// The 'option' parameter specifies the configuration parameter to set, and the 'value' parameter specifies the new value.
+// For more information, please refer to the Redis documentation:
+// [FT.CONFIG SET]: (https://redis.io/commands/ft.config-set/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L841
+func (c *Compat) FTConfigSet(ctx context.Context, option string, value interface{}) *StatusCmd {
+	cmd := c.client.B().FtConfigSet().Option(option).Value(str(value)).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTCreate - Creates a new index with the given options and schema.
+// The 'index' parameter specifies the name of the index to create.
+// The 'options' parameter specifies various options for the index, such as:
+// whether to index hashes or JSONs, prefixes, filters, default language, score, score field, payload field, etc.
+// The 'schema' parameter specifies the schema for the index, which includes the field name, field type, etc.
+// For more information, please refer to the Redis documentation:
+// [FT.CREATE]: (https://redis.io/commands/ft.create/)
+// FTCreate aligns with go-redis v9.7.0.
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L854
+func (c *Compat) FTCreate(ctx context.Context, index string, options *FTCreateOptions, schema ...*FieldSchema) *StatusCmd {
+	_cmd := cmds.Incomplete(c.client.B().FtCreate().Index(index))
+	if options != nil {
+		// [ON HASH | JSON]
+		if options.OnHash {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).OnHash())
+		}
+		if options.OnJSON {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).OnJson())
+		}
+		// [PREFIX count prefix [prefix ...]]
+		_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Prefix(int64(len(options.Prefix))).Prefix(argsToSlice(options.Prefix)...))
+		// [FILTER {filter}]
+		if options.Filter != "" {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Filter(options.Filter))
+		}
+		// [LANGUAGE default_lang]
+		if options.DefaultLanguage != "" {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Language(options.DefaultLanguage))
+		}
+		// [LANGUAGE_FIELD lang_attribute]
+		if options.LanguageField != "" {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).LanguageField(options.LanguageField))
+		}
+		// [SCORE default_score]
+		if options.Score != 0 {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Score(options.Score))
+		}
+		// [SCORE_FIELD score_attribute]
+		if options.ScoreField != "" {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).ScoreField(options.ScoreField))
+		}
+		// [PAYLOAD_FIELD payload_attribute]
+		if options.PayloadField != "" {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).PayloadField(options.PayloadField))
+		}
+		// [MAXTEXTFIELDS]
+		// FIXME: in go-reids, FTCreateOptions.MaxTextFields should be bool, not int
+		if options.MaxTextFields > 0 {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Maxtextfields())
+		}
+		// [TEMPORARY seconds]
+		// FIXME: reudis: Temporary should not be float64
+		if options.Temporary > 0 {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Temporary(float64(options.Temporary)))
+		}
+		// [NOOFFSETS]
+		if options.NoOffsets {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Nooffsets())
+		}
+		// [NOHL]
+		if options.NoHL {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Nohl())
+		}
+		// [NOFIELDS]
+		if options.NoFields {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Nofields())
+		}
+		// [NOFREQS]
+		if options.NoFreqs {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Nofreqs())
+		}
+		// [STOPWORDS count [stopword ...]]
+		if len(options.StopWords) > 0 {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Stopwords(int64(len(options.StopWords))).Stopword(argsToSlice(options.StopWords)...))
+		}
+		// [SKIPINITIALSCAN]
+		if options.SkipInitialScan {
+			_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Skipinitialscan())
+		}
+	}
+	_cmd = cmds.Incomplete(cmds.FtCreateIndex(_cmd).Schema())
+	// 	SCHEMA field_name [AS alias] TEXT | TAG | NUMERIC | GEO | VECTOR | GEOSHAPE [ SORTABLE [UNF]]
+	//   [NOINDEX] [ field_name [AS alias] TEXT | TAG | NUMERIC | GEO | VECTOR | GEOSHAPE [ SORTABLE [UNF]] [NOINDEX] ...]
+	for _, sc := range schema {
+		if sc.FieldName == "" || sc.FieldType == SearchFieldTypeInvalid {
+			panic("FT.CREATE: SCHEMA FieldName and FieldType are required")
+		}
+		_cmd = cmds.Incomplete(cmds.FtCreateSchema(_cmd).FieldName(sc.FieldName))
+		if sc.As != "" {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldName(_cmd).As(sc.As))
+		}
+		switch sc.FieldType {
+		case SearchFieldTypeNumeric:
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldAs(_cmd).Numeric())
+		case SearchFieldTypeTag:
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldAs(_cmd).Tag())
+		case SearchFieldTypeText:
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldAs(_cmd).Text())
+		case SearchFieldTypeGeo:
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldAs(_cmd).Geo())
+		case SearchFieldTypeVector:
+			// Ref: https://redis.io/docs/latest/develop/interact/search-and-query/advanced-concepts/vectors/#create-a-vector-index
+			if sc.VectorArgs == nil {
+				panic("FT.CREATE: SCHEMA VectorArgs cannot be nil")
+			}
+			if sc.VectorArgs.FlatOptions != nil && sc.VectorArgs.HNSWOptions != nil {
+				panic("FT.CREATE: SCHEMA VectorArgs FlatOptions and HNSWOptions are mutually exclusive")
+			}
+			var args []any
+			algorithm := ""
+			if sc.VectorArgs.FlatOptions != nil {
+				algorithm = "FLAT"
+				if sc.VectorArgs.FlatOptions.Type == "" || sc.VectorArgs.FlatOptions.Dim == 0 || sc.VectorArgs.FlatOptions.DistanceMetric == "" {
+					panic("FT.CREATE: Type, Dim and DistanceMetric are required for VECTOR FLAT")
+				}
+				flatArgs := []interface{}{
+					"TYPE", sc.VectorArgs.FlatOptions.Type,
+					"DIM", sc.VectorArgs.FlatOptions.Dim,
+					"DISTANCE_METRIC", sc.VectorArgs.FlatOptions.DistanceMetric,
+				}
+				if sc.VectorArgs.FlatOptions.InitialCapacity > 0 {
+					flatArgs = append(flatArgs, "INITIAL_CAP", sc.VectorArgs.FlatOptions.InitialCapacity)
+				}
+				if sc.VectorArgs.FlatOptions.BlockSize > 0 {
+					flatArgs = append(flatArgs, "BLOCK_SIZE", sc.VectorArgs.FlatOptions.BlockSize)
+				}
+				args = flatArgs
+			}
+			if sc.VectorArgs.HNSWOptions != nil {
+				algorithm = "HNSW"
+				if sc.VectorArgs.HNSWOptions.Type == "" || sc.VectorArgs.HNSWOptions.Dim == 0 || sc.VectorArgs.HNSWOptions.DistanceMetric == "" {
+					panic("FT.CREATE: Type, Dim and DistanceMetric are required for VECTOR HNSW")
+				}
+				hnswArgs := []interface{}{
+					"TYPE", sc.VectorArgs.HNSWOptions.Type,
+					"DIM", sc.VectorArgs.HNSWOptions.Dim,
+					"DISTANCE_METRIC", sc.VectorArgs.HNSWOptions.DistanceMetric,
+				}
+				if sc.VectorArgs.HNSWOptions.InitialCapacity > 0 {
+					hnswArgs = append(hnswArgs, "INITIAL_CAP", sc.VectorArgs.HNSWOptions.InitialCapacity)
+				}
+				if sc.VectorArgs.HNSWOptions.MaxEdgesPerNode > 0 {
+					hnswArgs = append(hnswArgs, "M", sc.VectorArgs.HNSWOptions.MaxEdgesPerNode)
+				}
+				if sc.VectorArgs.HNSWOptions.MaxAllowedEdgesPerNode > 0 {
+					hnswArgs = append(hnswArgs, "EF_CONSTRUCTION", sc.VectorArgs.HNSWOptions.MaxAllowedEdgesPerNode)
+				}
+				if sc.VectorArgs.HNSWOptions.EFRunTime > 0 {
+					hnswArgs = append(hnswArgs, "EF_RUNTIME", sc.VectorArgs.HNSWOptions.EFRunTime)
+				}
+				if sc.VectorArgs.HNSWOptions.Epsilon > 0 {
+					hnswArgs = append(hnswArgs, "EPSILON", sc.VectorArgs.HNSWOptions.Epsilon)
+				}
+				args = hnswArgs
+			}
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldAs(_cmd).Vector(algorithm, int64(len(args)), argsToSlice(args)...))
+
+		case SearchFieldTypeGeoShape:
+			if sc.GeoShapeFieldType == "" {
+				panic("FT.CREATE: GeoShapeFieldType cannot be empty while SCHEMA FieldType is GEOSHAPE")
+			}
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldAs(_cmd).Geoshape().FieldName(sc.GeoShapeFieldType))
+		default:
+			panic(fmt.Sprintf("unexpected SearchFieldType: %s", sc.FieldType.String()))
+		}
+		if sc.NoStem {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Nostem())
+		}
+		if sc.Sortable {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Sortable())
+		}
+		if sc.UNF {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldOptionSortableSortable(_cmd).Unf())
+		}
+		if sc.NoIndex {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Noindex())
+		}
+		// FIXME: redis doc: PHONETIC not in EBNF definition
+		if sc.PhoneticMatcher != "" {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Phonetic(sc.PhoneticMatcher))
+		}
+		if sc.Weight > 0 {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Weight(sc.Weight))
+		}
+		if sc.Separator != "" {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Separator(sc.Separator))
+		}
+		if sc.CaseSensitive {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Casesensitive())
+		}
+		if sc.WithSuffixtrie {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Withsuffixtrie())
+		}
+		if sc.IndexEmpty {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Indexempty())
+		}
+		if sc.IndexMissing {
+			_cmd = cmds.Incomplete(cmds.FtCreateFieldFieldTypeText(_cmd).Indexmissing())
+		}
+	}
+	cmd := cmds.FtCreateFieldFieldTypeText(_cmd).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTCursorDel - Deletes a cursor from an existing index.
+// The 'index' parameter specifies the index from which to delete the cursor, and the 'cursorId' parameter specifies the ID of the cursor to delete.
+// For more information, please refer to the Redis documentation:
+// [FT.CURSOR DEL]: (https://redis.io/commands/ft.cursor-del/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1032
+func (c *Compat) FTCursorDel(ctx context.Context, index string, cursorId int) *StatusCmd {
+	cmd := c.client.B().FtCursorDel().Index(index).CursorId(int64(cursorId)).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTCursorRead - Reads the next results from an existing cursor.
+// The 'index' parameter specifies the index from which to read the cursor, the 'cursorId' parameter specifies the ID of the cursor to read, and the 'count' parameter specifies the number of results to read.
+// For more information, please refer to the Redis documentation:
+// [FT.CURSOR READ]: (https://redis.io/commands/ft.cursor-read/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1042
+func (c *Compat) FTCursorRead(ctx context.Context, index string, cursorId int, count int) *MapStringInterfaceCmd {
+	cmd := c.client.B().FtCursorRead().Index(index).CursorId(int64(cursorId)).Count(int64(count)).Build()
+	return newMapStringInterfaceCmd(c.client.Do(ctx, cmd))
+}
+
+// FTDictAdd - Adds terms to a dictionary.
+// The 'dict' parameter specifies the dictionary to which to add the terms, and the 'term' parameter specifies the terms to add.
+// For more information, please refer to the Redis documentation:
+// [FT.DICTADD]: (https://redis.io/commands/ft.dictadd/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1056
+func (c *Compat) FTDictAdd(ctx context.Context, dict string, term ...interface{}) *IntCmd {
+	cmd := c.client.B().FtDictadd().Dict(dict).Term(argsToSlice(term)...).Build()
+	return newIntCmd(c.client.Do(ctx, cmd))
+}
+
+// FTDictDel - Deletes terms from a dictionary.
+// The 'dict' parameter specifies the dictionary from which to delete the terms, and the 'term' parameter specifies the terms to delete.
+// For more information, please refer to the Redis documentation:
+// [FT.DICTDEL]: (https://redis.io/commands/ft.dictdel/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1068
+func (c *Compat) FTDictDel(ctx context.Context, dict string, term ...interface{}) *IntCmd {
+	cmd := c.client.B().FtDictdel().Dict(dict).Term(argsToSlice(term)...).Build()
+	return newIntCmd(c.client.Do(ctx, cmd))
+}
+
+// FTDictDump - Returns all terms in the specified dictionary.
+// The 'dict' parameter specifies the dictionary from which to return the terms.
+// For more information, please refer to the Redis documentation:
+// [FT.DICTDUMP]: (https://redis.io/commands/ft.dictdump/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1080
+func (c *Compat) FTDictDump(ctx context.Context, dict string) *StringSliceCmd {
+	cmd := c.client.B().FtDictdump().Dict(dict).Build()
+	return newStringSliceCmd(c.client.Do(ctx, cmd))
+}
+
+// FTDropIndex - Deletes an index.
+// The 'index' parameter specifies the index to delete.
+// For more information, please refer to the Redis documentation:
+// [FT.DROPINDEX]: (https://redis.io/commands/ft.dropindex/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1090
+func (c *Compat) FTDropIndex(ctx context.Context, index string) *StatusCmd {
+	cmd := c.client.B().FtDropindex().Index(index).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTDropIndexWithArgs - Deletes an index with options.
+// The 'index' parameter specifies the index to delete, and the 'options' parameter specifies the DeleteDocs option for docs deletion.
+// For more information, please refer to the Redis documentation:
+// [FT.DROPINDEX]: (https://redis.io/commands/ft.dropindex/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1101
+func (c *Compat) FTDropIndexWithArgs(ctx context.Context, index string, options *FTDropIndexOptions) *StatusCmd {
+	_cmd := cmds.Incomplete(c.client.B().FtDropindex().Index(index))
+	if options.DeleteDocs {
+		_cmd = cmds.Incomplete(cmds.FtDropindexIndex(_cmd).Dd())
+	}
+	cmd := cmds.FtDropindexIndex(_cmd).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTExplain - Returns the execution plan for a complex query.
+// The 'index' parameter specifies the index to query, and the 'query' parameter specifies the query string.
+// For more information, please refer to the Redis documentation:
+// [FT.EXPLAIN]: (https://redis.io/commands/ft.explain/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1117
+func (c *Compat) FTExplain(ctx context.Context, index string, query string) *StringCmd {
+	cmd := c.client.B().FtExplain().Index(index).Query(query).Build()
+	return newStringCmd(c.client.Do(ctx, cmd))
+}
+
+// FTExplainWithArgs - Returns the execution plan for a complex query with options.
+// The 'index' parameter specifies the index to query, the 'query' parameter specifies the query string, and the 'options' parameter specifies the Dialect for the query.
+// For more information, please refer to the Redis documentation:
+// [FT.EXPLAIN]: (https://redis.io/commands/ft.explain/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1127
+func (c *Compat) FTExplainWithArgs(ctx context.Context, index string, query string, options *FTExplainOptions) *StringCmd {
+	_cmd := cmds.Incomplete(c.client.B().FtExplain().Index(index).Query(query))
+	if options != nil {
+		dialectVersion, err := strconv.ParseInt(options.Dialect, 10, 64)
+		if err != nil {
+			panic(fmt.Errorf("failed to parse dialect version: %v", err))
+		}
+		_cmd = cmds.Incomplete(cmds.FtExplainQuery(_cmd).Dialect(dialectVersion))
+	}
+	cmd := cmds.FtExplainQuery(_cmd).Build()
+	return newStringCmd(c.client.Do(ctx, cmd))
+}
+
+// FTInfo - Retrieves information about an index.
+// The 'index' parameter specifies the index to retrieve information about.
+// For more information, please refer to the Redis documentation:
+// [FT.INFO]: (https://redis.io/commands/ft.info/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1393
+func (c *Compat) FTInfo(ctx context.Context, index string) *FTInfoCmd {
+	cmd := c.client.B().FtInfo().Index(index).Build()
+	return newFTInfoCmd(c.client.Do(ctx, cmd))
+}
+
+// FTSpellCheck - Checks a query string for spelling errors.
+// For more details about spellcheck query please follow:
+// https://redis.io/docs/interact/search-and-query/advanced-concepts/spellcheck/
+// For more information, please refer to the Redis documentation:
+// [FT.SPELLCHECK]: (https://redis.io/commands/ft.spellcheck/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1404
+func (c *Compat) FTSpellCheck(ctx context.Context, index string, query string) *FTSpellCheckCmd {
+	cmd := c.client.B().FtSpellcheck().Index(index).Query(query).Build()
+	return newFTSpellCheckCmd(c.client.Do(ctx, cmd))
+}
+
+// FTSpellCheckWithArgs - Checks a query string for spelling errors with additional options.
+// For more details about spellcheck query please follow:
+// https://redis.io/docs/interact/search-and-query/advanced-concepts/spellcheck/
+// For more information, please refer to the Redis documentation:
+// [FT.SPELLCHECK]: (https://redis.io/commands/ft.spellcheck/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1416
+func (c *Compat) FTSpellCheckWithArgs(ctx context.Context, index string, query string, options *FTSpellCheckOptions) *FTSpellCheckCmd {
+	_cmd := cmds.Incomplete(c.client.B().FtSpellcheck().Index(index).Query(query))
+	if options != nil {
+		if options.Distance > 0 {
+			_cmd = cmds.Incomplete(cmds.FtSpellcheckQuery(_cmd).Distance(int64(options.Distance)))
+		}
+		if options.Terms != nil {
+			if options.Terms.Inclusion != "INCLUDE" && options.Terms.Inclusion != "EXCLUDE" {
+				panic("Inclusion should be either INCLUDE or EXCLUDE")
+			}
+			if options.Terms.Inclusion == "INCLUDE" {
+				_cmd = cmds.Incomplete(cmds.FtSpellcheckQuery(_cmd).TermsInclude().Dictionary(options.Terms.Dictionary).Terms(argsToSlice(options.Terms.Terms)...))
+			} else {
+				_cmd = cmds.Incomplete(cmds.FtSpellcheckQuery(_cmd).TermsExclude().Dictionary(options.Terms.Dictionary).Terms(argsToSlice(options.Terms.Terms)...))
+			}
+		}
+		if options.Dialect > 0 {
+			_cmd = cmds.Incomplete(cmds.FtSpellcheckQuery(_cmd).Dialect(int64(options.Dialect)))
+		}
+	}
+	cmd := cmds.FtSpellcheckQuery(_cmd).Build()
+	return newFTSpellCheckCmd(c.client.Do(ctx, cmd))
+}
+
+// FTSearch - Executes a search query on an index.
+// The 'index' parameter specifies the index to search, and the 'query' parameter specifies the search query.
+// For more information, please refer to the Redis documentation:
+// [FT.SEARCH]: (https://redis.io/commands/ft.search/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1679
+func (c *Compat) FTSearch(ctx context.Context, index string, query string) *FTSearchCmd {
+	cmd := c.client.B().FtSearch().Index(index).Query(query).Build()
+	return newFTSearchCmd(c.client.Do(ctx, cmd), nil)
+}
+
+// FTSearchWithArgs - Executes a search query on an index with additional options.
+// The 'index' parameter specifies the index to search, the 'query' parameter specifies the search query,
+// and the 'options' parameter specifies additional options for the search.
+// For more information, please refer to the Redis documentation:
+// [FT.SEARCH]: (https://redis.io/commands/ft.search/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1802
+func (c *Compat) FTSearchWithArgs(ctx context.Context, index string, query string, options *FTSearchOptions) *FTSearchCmd {
+	_cmd := cmds.Incomplete(c.client.B().FtSearch().Index(index).Query(query))
+	if options != nil {
+		// [NOCONTENT]
+		if options.NoContent {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Nocontent())
+		}
+		// [VERBATIM]
+		if options.Verbatim {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Verbatim())
+		}
+		// [NOSTOPWORDS]
+		if options.NoStopWords {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Nostopwords())
+		}
+		// [WITHSCORES]
+		if options.WithScores {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Withscores())
+		}
+		// [WITHPAYLOADS]
+		if options.WithPayloads {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Withpayloads())
+		}
+		// [WITHSORTKEYS]
+		if options.WithSortKeys {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Withsortkeys())
+		}
+		// [FILTER numeric_field min max [ FILTER numeric_field min max ...]]
+		for _, filter := range options.Filters {
+			min, err := strconv.ParseFloat(str(filter.Min), 64)
+			if err != nil {
+				panic(fmt.Sprintf("failed to parse min %v to float64", filter.Min))
+			}
+			max, err := strconv.ParseFloat(str(filter.Max), 64)
+			if err != nil {
+				panic(fmt.Sprintf("failed to parse max %v to float64", filter.Max))
+			}
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Filter(str(filter.FieldName)).Min(min).Max(max))
+		}
+		//  [GEOFILTER geo_field lon lat radius m | km | mi | ft [ GEOFILTER geo_field lon lat radius m | km | mi | ft ...]]
+		for _, filter := range options.GeoFilter {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Geofilter(filter.FieldName).Lon(filter.Longitude).Lat(filter.Latitude).Radius(filter.Radius))
+			switch filter.Unit {
+			case "m":
+				_cmd = cmds.Incomplete(cmds.FtSearchGeoFilterRadius(_cmd).M())
+			case "km":
+				_cmd = cmds.Incomplete(cmds.FtSearchGeoFilterRadius(_cmd).Km())
+			case "mi":
+				_cmd = cmds.Incomplete(cmds.FtSearchGeoFilterRadius(_cmd).Mi())
+			case "ft":
+				_cmd = cmds.Incomplete(cmds.FtSearchGeoFilterRadius(_cmd).Ft())
+			default:
+				panic(fmt.Sprintf("invalid unit, want m | km | mi | ft, got %v", filter.Unit))
+			}
+		}
+		// [INKEYS count key [key ...]]
+		if len(options.InKeys) > 0 {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Inkeys(str(len(options.InKeys))).Key(argsToSlice(options.InKeys)...))
+		}
+		// [ INFIELDS count field [field ...]]
+		if len(options.InFields) > 0 {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Infields(str(len(options.InFields))).Field(argsToSlice(options.InFields)...))
+		}
+		// [RETURN count identifier [AS property] [ identifier [AS property] ...]]
+		if len(options.Return) > 0 {
+			var numOfArgs int64 = 0
+			for _, re := range options.Return {
+				numOfArgs++
+				if re.As != "" {
+					numOfArgs += 2
+				}
+			}
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Return(str(numOfArgs)))
+			for _, re := range options.Return {
+				_cmd = cmds.Incomplete(cmds.FtSearchReturnReturn(_cmd).Identifier(re.FieldName))
+				if re.As != "" {
+					_cmd = cmds.Incomplete(cmds.FtSearchReturnIdentifiersIdentifier(_cmd).As(re.As))
+				}
+			}
+		}
+		// FIXME: go-redis doesn't implement SUMMARIZE option
+		// [SUMMARIZE [ FIELDS count field [field ...]] [FRAGS num] [LEN fragsize] [SEPARATOR separator]]
+		// [SLOP slop]
+		if options.Slop > 0 {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Slop(int64(options.Slop)))
+		}
+		// [TIMEOUT timeout]
+		if options.Timeout > 0 {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Timeout(int64(options.Timeout)))
+		}
+		// [INORDER]
+		if options.InOrder {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Inorder())
+		}
+		// [LANGUAGE language]
+		if options.Language != "" {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Language(options.Language))
+		}
+		// [EXPANDER expander]
+		if options.Expander != "" {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Expander(options.Expander))
+		}
+		// [SCORER scorer]
+		if options.Scorer != "" {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Scorer(options.Scorer))
+		}
+		// [EXPLAINSCORE]
+		if options.ExplainScore {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Explainscore())
+		}
+		// [PAYLOAD payload]
+		if options.Payload != "" {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Payload(options.Payload))
+		}
+		// [SORTBY sortby [ ASC | DESC] [WITHCOUNT]]
+		if options.SortBy != nil {
+			if len(options.SortBy) != 1 {
+				panic(fmt.Sprintf("options.SortBy can only have 1 element, got %v", len(options.SortBy)))
+			}
+			sortBy := options.SortBy[0]
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Sortby(sortBy.FieldName))
+			if sortBy.Asc == sortBy.Desc && sortBy.Asc {
+				panic("options.SortBy[0] should specify either ASC or DESC")
+			}
+			if sortBy.Asc {
+				_cmd = cmds.Incomplete(cmds.FtSearchSortbySortby(_cmd).Asc())
+			} else {
+				_cmd = cmds.Incomplete(cmds.FtSearchSortbySortby(_cmd).Desc())
+			}
+			if options.SortByWithCount {
+				_cmd = cmds.Incomplete(cmds.FtSearchSortbySortby(_cmd).Withcount())
+			}
+		}
+		// [LIMIT offset num]
+		if options.LimitOffset >= 0 && options.Limit > 0 {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Limit().OffsetNum(int64(options.LimitOffset), int64(options.Limit)))
+		}
+		// [PARAMS nargs name value [ name value ...]]
+		if options.Params != nil {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Params().Nargs(int64(len(options.Params) * 2)))
+			for name, val := range options.Params {
+				_cmd = cmds.Incomplete(cmds.FtSearchParamsNargs(_cmd).NameValue().NameValue(name, str(val)))
+			}
+		}
+		// [DIALECT dialect]
+		if options.DialectVersion > 0 {
+			_cmd = cmds.Incomplete(cmds.FtSearchQuery(_cmd).Dialect(int64(options.DialectVersion)))
+		}
+	}
+	cmd := cmds.FtSearchQuery(_cmd).Build()
+	return newFTSearchCmd(c.client.Do(ctx, cmd), options)
+}
+
+// FTSynDump - Dumps the contents of a synonym group.
+// The 'index' parameter specifies the index to dump.
+// For more information, please refer to the Redis documentation:
+// [FT.SYNDUMP]: (https://redis.io/commands/ft.syndump/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1987
+func (c *Compat) FTSynDump(ctx context.Context, index string) *FTSynDumpCmd {
+	cmd := c.client.B().FtSyndump().Index(index).Build()
+	return newFTSynDumpCmd(c.client.Do(ctx, cmd))
+}
+
+// FTSynUpdate - Creates or updates a synonym group with additional terms.
+// The 'index' parameter specifies the index to update, the 'synGroupId' parameter specifies the synonym group id, and the 'terms' parameter specifies the additional terms.
+// For more information, please refer to the Redis documentation:
+// [FT.SYNUPDATE]: (https://redis.io/commands/ft.synupdate/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L1997
+func (c *Compat) FTSynUpdate(ctx context.Context, index string, synGroupId interface{}, terms []interface{}) *StatusCmd {
+	cmd := c.client.B().FtSynupdate().Index(index).SynonymGroupId(str(synGroupId)).Term(argToSlice(terms)...).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTSynUpdateWithArgs - Creates or updates a synonym group with additional terms and options.
+// The 'index' parameter specifies the index to update, the 'synGroupId' parameter specifies the synonym group id, the 'options' parameter specifies additional options for the update, and the 'terms' parameter specifies the additional terms.
+// For more information, please refer to the Redis documentation:
+// [FT.SYNUPDATE]: (https://redis.io/commands/ft.synupdate/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L2009
+func (c *Compat) FTSynUpdateWithArgs(ctx context.Context, index string, synGroupId interface{}, options *FTSynUpdateOptions, terms []interface{}) *StatusCmd {
+	_cmd := cmds.Incomplete(c.client.B().FtSynupdate().Index(index).SynonymGroupId(str(synGroupId)))
+	if options != nil {
+		if options.SkipInitialScan {
+			_cmd = cmds.Incomplete(cmds.FtSynupdateSynonymGroupId(_cmd).Skipinitialscan())
+		}
+	}
+	cmd := cmds.FtSynupdateSynonymGroupId(_cmd).Term(argsToSlice(terms)...).Build()
+	return newStatusCmd(c.client.Do(ctx, cmd))
+}
+
+// FTTagVals - Returns all distinct values indexed in a tag field.
+// The 'index' parameter specifies the index to check, and the 'field' parameter specifies the tag field to retrieve values from.
+// For more information, please refer to the Redis documentation:
+// [FT.TAGVALS]: (https://redis.io/commands/ft.tagvals/)
+// see go-redis v9.7.0 https://github.com/redis/go-redis/blob/v9.7.0/search_commands.go#L2024
+func (c *Compat) FTTagVals(ctx context.Context, index string, field string) *StringSliceCmd {
+	cmd := c.client.B().FtTagvals().Index(index).FieldName(field).Build()
+	return newStringSliceCmd(c.client.Do(ctx, cmd))
+}
+
+func (c *Compat) ModuleLoadex(ctx context.Context, conf *ModuleLoadexConfig) *StringCmd {
+	cmd := c.client.B().ModuleLoadex().Path(conf.Path).Config()
+	for k, v := range conf.Conf {
+		cmd = cmd.Config(k, str(v))
+	}
+	var resp rueidis.RedisResult
+	if len(conf.Args) > 0 {
+		resp = c.client.Do(ctx, cmd.Args(argsToSlice(conf.Args)...).Build())
+	} else {
+		resp = c.client.Do(ctx, cmd.Build())
+	}
+	return newStringCmd(resp)
+}
+
 func (c CacheCompat) BitCount(ctx context.Context, key string, bitCount *BitCount) *IntCmd {
 	var resp rueidis.RedisResult
 	if bitCount == nil {
@@ -4879,6 +5814,15 @@ func (c CacheCompat) BitPosSpan(ctx context.Context, key string, bit, start, end
 		resp = c.client.DoCache(ctx, c.client.B().Bitpos().Key(key).Bit(bit).Start(start).End(end).Byte().Cache(), c.ttl)
 	}
 	return newIntCmd(resp)
+}
+
+func (c CacheCompat) BitFieldRO(ctx context.Context, key string, args ...any) *IntSliceCmd {
+	cmd := c.client.B().Arbitrary("BITFIELD_RO").Keys(key)
+	for i := 0; i < len(args); i += 2 {
+		cmd = cmd.Args("GET", str(args[i]), str(args[i+1]))
+	}
+	resp := c.client.DoCache(ctx, rueidis.Cacheable(cmd.ReadOnly()), c.ttl)
+	return newIntSliceCmd(resp)
 }
 
 func (c CacheCompat) EvalRO(ctx context.Context, script string, keys []string, args ...any) *Cmd {

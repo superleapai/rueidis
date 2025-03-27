@@ -90,6 +90,9 @@ func TestCompleted_IsOptIn(t *testing.T) {
 	if cmd := OptInCmd; !cmd.IsOptIn() {
 		t.Fatalf("should be opt in command")
 	}
+	if cmd := OptInNopCmd; !cmd.IsOptIn() {
+		t.Fatalf("should be opt in command")
+	}
 }
 
 func TestCompleted_NoReply(t *testing.T) {
@@ -108,6 +111,37 @@ func TestCompleted_NoReply(t *testing.T) {
 	}
 	if cmd := builder.Punsubscribe().Pattern("").Build(); !cmd.NoReply() {
 		t.Fatalf("should be no reply command")
+	}
+	if cmd := builder.Ssubscribe().Channel("").Build(); !cmd.NoReply() {
+		t.Fatalf("should be no reply command")
+	}
+	if cmd := builder.Sunsubscribe().Channel("").Build(); !cmd.NoReply() {
+		t.Fatalf("should be no reply command")
+	}
+}
+
+func TestCompleted_IsUnsub(t *testing.T) {
+	if cmd := NewCompleted([]string{"a", "b"}); cmd.IsUnsub() {
+		t.Fatalf("should not be no reply command")
+	}
+	builder := NewBuilder(InitSlot)
+	if cmd := builder.Subscribe().Channel("").Build(); cmd.IsUnsub() {
+		t.Fatalf("should be not be unsub command")
+	}
+	if cmd := builder.Unsubscribe().Channel("").Build(); !cmd.IsUnsub() {
+		t.Fatalf("should be unsub command")
+	}
+	if cmd := builder.Psubscribe().Pattern("").Build(); cmd.IsUnsub() {
+		t.Fatalf("should be not be unsub command")
+	}
+	if cmd := builder.Punsubscribe().Pattern("").Build(); !cmd.IsUnsub() {
+		t.Fatalf("should be unsub command")
+	}
+	if cmd := builder.Ssubscribe().Channel("").Build(); cmd.IsUnsub() {
+		t.Fatalf("should be not be unsub command")
+	}
+	if cmd := builder.Sunsubscribe().Channel("").Build(); !cmd.IsUnsub() {
+		t.Fatalf("should be unsub command")
 	}
 }
 
@@ -151,11 +185,11 @@ func TestCompleted_CommandSlice(t *testing.T) {
 	cs := []string{"a", "b", "c"}
 	completed := NewCompleted(cs)
 	if !reflect.DeepEqual(completed.cs.s, cs) || !reflect.DeepEqual(completed.Commands(), cs) {
-		t.Fatalf("unexpecetd diffs")
+		t.Fatalf("unexpected diffs")
 	}
 	cacheable := Cacheable(completed)
 	if !reflect.DeepEqual(cacheable.cs.s, cs) || !reflect.DeepEqual(cacheable.Commands(), cs) {
-		t.Fatalf("unexpecetd diffs")
+		t.Fatalf("unexpected diffs")
 	}
 }
 

@@ -139,7 +139,7 @@ func (a *adapter) Delete(keys []RedisMessage) {
 		}
 	} else {
 		for _, k := range keys {
-			a.del(k.string)
+			a.del(k.string())
 		}
 	}
 	a.mu.Unlock()
